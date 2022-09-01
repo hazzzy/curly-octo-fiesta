@@ -2,8 +2,8 @@ use linkify::{LinkFinder, LinkKind};
 use url::Url;
 
 use std::env;
-use std::time::Duration;
 use std::sync::Arc;
+use std::time::Duration;
 
 use serenity::async_trait;
 use serenity::model::channel::Message;
@@ -17,7 +17,7 @@ struct Handler;
 struct LinkFinderUrl;
 
 impl TypeMapKey for LinkFinderUrl {
-    type Value = Arc<LinkFinder>; // gonna pretend this thing doesn't need an RwLock
+    type Value = Arc<LinkFinder>;
 }
 
 const NITTER_CUNNYCON: &str = "https://nitter.cunnycon.org";
@@ -28,17 +28,21 @@ impl EventHandler for Handler {
     async fn message(&self, ctx: Context, mut msg: Message) {
         let finder = {
             let data = ctx.data.read().await;
-            data.get::<LinkFinderUrl>().expect("Expected LinkFinderSingle in TypeMap.").clone()
+            data.get::<LinkFinderUrl>()
+                .expect("Expected LinkFinderUrl in TypeMap.")
+                .clone()
         };
 
         let mut new_urls = Vec::<String>::new();
-        
-        for link in finder.links(&msg.content).flat_map(|x| Url::parse(x.as_str())) {
+
+        for link in finder
+            .links(&msg.content)
+            .flat_map(|x| Url::parse(x.as_str()))
+        {
             if let Some(domain) = link.domain() {
                 if domain.contains("twitter.com") {
                     new_urls.push(format!("{}{}", NITTER_CUNNYCON, link.path()));
-                }
-                else if domain.contains("pixiv.net") {
+                } else if domain.contains("pixiv.net") {
                     new_urls.push(format!("{}{}", PIXIV_CUNNYCON, link.path()));
                 }
             }
@@ -49,13 +53,12 @@ impl EventHandler for Handler {
             if let Err(why) = msg.reply(&ctx.http, message.as_str()).await {
                 println!("Error sending message: {:?}", why);
             }
-            // TODO: move this to another task which will periodically check if an embed exists, up to a maximum of X seconds
-            tokio::spawn(async move {
-                sleep(Duration::from_millis(500)).await;
-                if let Err(why) = msg.suppress_embeds(&ctx.http).await {
-                    println!("Error suppressing message embeds: {:?}", why);
-                }
-            });
+
+            // TODO: rewrite to periodically check if an embed exists, up to a maximum of X seconds
+            sleep(Duration::from_millis(500)).await;
+            if let Err(why) = msg.suppress_embeds(&ctx.http).await {
+                println!("Error suppressing message embeds: {:?}", why);
+            }
         }
     }
 
@@ -72,8 +75,10 @@ async fn main() {
         | GatewayIntents::DIRECT_MESSAGES
         | GatewayIntents::MESSAGE_CONTENT;
 
-    let mut client =
-        Client::builder(&token, intents).event_handler(Handler).await.expect("Err creating client");
+    let mut client = Client::builder(&token, intents)
+        .event_handler(Handler)
+        .await
+        .expect("Err creating client");
 
     {
         let mut data = client.data.write().await;
