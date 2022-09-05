@@ -49,7 +49,7 @@ impl EventHandler for Handler {
         }
 
         if !new_urls.is_empty() {
-            let message = new_urls.join(" | ");
+            let message = new_urls.join("\n");
             if let Err(why) = msg.reply(&ctx.http, message.as_str()).await {
                 println!("Error sending message: {:?}", why);
             }
@@ -69,7 +69,7 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
-    dotenv::dotenv().expect("Failed to load .env file");
+    dotenv::dotenv().ok();
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES
