@@ -2,7 +2,6 @@ use linkify::{LinkFinder, LinkKind};
 use url::Url;
 
 use std::env;
-use std::sync::Arc;
 use std::time::Duration;
 
 use serenity::async_trait;
@@ -12,12 +11,8 @@ use serenity::prelude::*;
 
 use tokio::time::sleep;
 
-struct Handler;
-
-struct LinkFinderUrl;
-
-impl TypeMapKey for LinkFinderUrl {
-    type Value = Arc<LinkFinder>;
+struct Handler {
+    finder: LinkFinder
 }
 
 const NITTER_CUNNYCON: &str = "https://nitter.cunnycon.org";
@@ -26,16 +21,9 @@ const PIXIV_CUNNYCON: &str = "https://pixiv.cunnycon.org";
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, mut msg: Message) {
-        let finder = {
-            let data = ctx.data.read().await;
-            data.get::<LinkFinderUrl>()
-                .expect("Expected LinkFinderUrl in TypeMap.")
-                .clone()
-        };
-
         let mut new_urls = Vec::<String>::new();
 
-        for link in finder
+        for link in self.finder
             .links(&msg.content)
             .flat_map(|x| Url::parse(x.as_str()))
         {
@@ -75,19 +63,13 @@ async fn main() {
         | GatewayIntents::DIRECT_MESSAGES
         | GatewayIntents::MESSAGE_CONTENT;
 
+    let mut finder = LinkFinder::new();
+    finder.kinds(&[LinkKind::Url]);
+
     let mut client = Client::builder(&token, intents)
-        .event_handler(Handler)
+        .event_handler(Handler { finder })
         .await
         .expect("Err creating client");
-
-    {
-        let mut data = client.data.write().await;
-
-        let mut finder = LinkFinder::new();
-        finder.kinds(&[LinkKind::Url]);
-
-        data.insert::<LinkFinderUrl>(Arc::new(finder));
-    }
 
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
