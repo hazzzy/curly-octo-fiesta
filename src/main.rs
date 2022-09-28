@@ -12,18 +12,40 @@ use serenity::prelude::*;
 use tokio::time::sleep;
 
 struct Handler {
-    finder: LinkFinder
+    finder: LinkFinder,
 }
 
 const NITTER_CUNNYCON: &str = "https://nitter.cunnycon.org";
 const PIXIV_CUNNYCON: &str = "https://pixiv.cunnycon.org";
 
+const JONES_USER_ID: u64 = 372259384820105226;
+const MONKE_USER_ID: u64 = 683071157104279637;
+const AZU_USER_ID: u64 = 171398209866825728;
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, mut msg: Message) {
+        // reply to jones laughing
+        let msg_text = &msg.content;
+        if msg.author.id.0 == JONES_USER_ID && (msg_text == "LOL" || msg_text == "LMAO") {
+            if let Err(why) = msg.react(&ctx.http, '🔊').await {
+                println!("Error reacting to message: {:?}", why);
+            }
+        }
+        // reply to monke expressing his love
+        else if msg.author.id.0 == MONKE_USER_ID
+            && (msg_text.to_lowercase().contains("love")
+                && (msg_text.to_lowercase().contains("azu") || msg.mentions_user_id(AZU_USER_ID)))
+        {
+            if let Err(why) = msg.reply_ping(&ctx.http, "shut up fag").await {
+                println!("Error replying to message: {:?}", why);
+            }
+        }
+
         let mut new_urls = Vec::<String>::new();
 
-        for link in self.finder
+        for link in self
+            .finder
             .links(&msg.content)
             .flat_map(|x| Url::parse(x.as_str()))
         {
