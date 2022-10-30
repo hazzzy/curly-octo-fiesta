@@ -27,7 +27,7 @@ impl EventHandler for Handler {
     async fn message(&self, ctx: Context, mut msg: Message) {
         // reply to jones laughing
         let msg_text = &msg.content;
-        if msg.author.id.0 == JONES_USER_ID && (msg_text == "LOL" || msg_text == "LMAO") {
+        if msg.author.id.0 == JONES_USER_ID && ["LOL", "LMFAO", "LMAO"].contains(&msg_text.to_uppercase().as_str()) {
             if let Err(why) = msg.react(&ctx.http, '🔊').await {
                 println!("Error reacting to message: {:?}", why);
             }
